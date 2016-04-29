@@ -61,7 +61,8 @@ table = {}
 
 inTable = {}
 all_ports = of.OFPP_FLOOD
-stdip = "00001010000000000000000000000"
+stddstip = "00001010000000000000000000000"
+stdsrcip = "00001010000000000000000000000"
 
 class DestTrie:
     def __init__(self,prefix,parent,rule, srctrie):
@@ -235,7 +236,7 @@ def remove_Auth(src_ip,dst_ip,message):
 
 
 def find_rule(src_ip, dst_ip):
-    if dst_ip[:29] != stdip:
+    if dst_ip[:29] != stddstip:
 	print "no rule match"
 	return
     dstformat = dst_ip
@@ -248,13 +249,36 @@ def find_rule(src_ip, dst_ip):
 	elif (desttrie.right!= None && dstformat[:dst_ip_len + 1] == desttrie.right.prefix):
 		desttrie = desttrie.right
 	if(desttrie.rule != False):
-		validtrie = desttrie
+		validdtrie = desttrie
 	dst_ip_len = dst_ip_len + 1
-    find_srcmatch(validtrie.srctrie, src_ip)
+    find_srcmatch(validdtrie.srctrie, src_ip)
     return
 
+
 def find_srcmatch(srctrie, src_ip):
-    
+    if src_ip[:29] != stdsrcip:
+	print "no rule match"
+	return
+    srcformat = src_ip
+    validstrie = None
+    src_ip_len = len(srctrie.prefix)
+    while( src_ip_len < 32 && (srctrie.left != None || srctrie.right != None)):
+	if (srctrie.left != None && srcformat[:src_ip_len + 1] == srctrie.left.prefix):
+		srctrie = srctrie.left
+	elif (srctrie.right!= None && srcformat[:src_ip_len + 1] == srctrie.right.prefix):
+		srctrie = srctrie.right
+	elif (srcformat[src_ip_len] == 0 && srctrie.switchl != None):
+		srctrie = srctrie.switchl
+	elif (srcformat[src_ip_len] == 1 && srctrie.switchr != None):
+		srctrie = srctrie.switchr
+	if(srctrie.rule != None):
+		validstrie = srctrie
+	src_ip_len = src_ip_len + 1
+    if validstrie == None:
+	print "no rule match"
+    else:
+	print validstrie.rule
+    return
 
 
 '''
