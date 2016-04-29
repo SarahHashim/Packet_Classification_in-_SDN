@@ -117,10 +117,7 @@ def _handle_PacketIn (event):
     print switch_id
     packet = event.parsed
     (pckt_srcip, pckt_dstip, hasARP) = getSrcIPandARP(packet.next)
-    print ("src ip") 
-    #print int(pckt_srcip)
-    print ("dst ip") 
-    print pckt_dstip
+    
 
     if pckt_srcip is None:
         pckt_srcip = "10.0.0.0"
@@ -178,16 +175,12 @@ def _handle_PacketIn (event):
         
 
 	find_rule( '' .join(format(int(x), '08b') for x in str(pckt_srcip).split('.')) , '' .join(format(int(x), '08b') for x in str(pckt_dstip).split('.')) )
-	print "source ip"
-	#print str(packet.src)
-	print ip.toUnsignedN()	
-	print "dest ip"
-	print str(packet.dst)
+	
 	if count == 0:
 		print "drop"
 		drop()
 	else:
-		print "match"		
+				
 		msg = of.ofp_flow_mod()
 		msg.match.dl_dst = packet.src
 		msg.match.dl_src = packet.dst
@@ -236,18 +229,22 @@ def remove_Auth(src_ip,dst_ip,message):
 
 
 def find_rule(src_ip, dst_ip):
+    print "src ip: %s" % src_ip
+    print "dst ip: %s" % dst_ip
     if dst_ip[:29] != stddstip:
-	print "no rule match"
+	print "dest no rule match"
 	return
     dstformat = dst_ip
     desttrie = dest
     validdtrie = desttrie
     dst_ip_len = len(desttrie.prefix)
-    while( dst_ip_len < 32 && (desttrie.left != None || desttrie.right != None)):
-	if (desttrie.left != None && dstformat[:dst_ip_len + 1] == desttrie.left.prefix):
+    while( dst_ip_len < 32 and (desttrie.left != None or desttrie.right != None)):
+	if (desttrie.left != None and dstformat[dst_ip_len] == "0"):
 		desttrie = desttrie.left
-	elif (desttrie.right!= None && dstformat[:dst_ip_len + 1] == desttrie.right.prefix):
+		print "dest left"
+	elif (desttrie.right!= None and dstformat[dst_ip_len] == "1"):
 		desttrie = desttrie.right
+		print "dest right"
 	if(desttrie.rule != False):
 		validdtrie = desttrie
 	dst_ip_len = dst_ip_len + 1
@@ -257,25 +254,29 @@ def find_rule(src_ip, dst_ip):
 
 def find_srcmatch(srctrie, src_ip):
     if src_ip[:29] != stdsrcip:
-	print "no rule match"
+	print "src no rule match"
 	return
     srcformat = src_ip
     validstrie = None
     src_ip_len = len(srctrie.prefix)
-    while( src_ip_len < 32 && (srctrie.left != None || srctrie.right != None)):
-	if (srctrie.left != None && srcformat[:src_ip_len + 1] == srctrie.left.prefix):
+    while( src_ip_len < 32 and (srctrie.left != None or srctrie.right != None)):
+	if (srctrie.left != None and srcformat[src_ip_len] == "0"):
 		srctrie = srctrie.left
-	elif (srctrie.right!= None && srcformat[:src_ip_len + 1] == srctrie.right.prefix):
+		print "src left"
+	elif (srctrie.right!= None and srcformat[src_ip_len] == "1"):
 		srctrie = srctrie.right
-	elif (srcformat[src_ip_len] == 0 && srctrie.switchl != None):
+		print "src right"
+	elif (srcformat[src_ip_len] == "0" and srctrie.switchl != None):
 		srctrie = srctrie.switchl
-	elif (srcformat[src_ip_len] == 1 && srctrie.switchr != None):
+		print "src switch left"
+	elif (srcformat[src_ip_len] == "1" and srctrie.switchr != None):
 		srctrie = srctrie.switchr
+		print "src switch right"
 	if(srctrie.rule != None):
 		validstrie = srctrie
 	src_ip_len = src_ip_len + 1
     if validstrie == None:
-	print "no rule match"
+	print "final no rule match"
     else:
 	print validstrie.rule
     return
@@ -469,24 +470,24 @@ def launch ():
     
 def construct_trie():
     global src, src0, src00, src10, dest
-    src = SrcTrie("", None, None, None, None)
+    src = SrcTrie("00001010000000000000000000000", None, None, None, None)
     src.left = SrcTrie("0", src, None, None, None)
     src.left.left = SrcTrie("00", src.left, "R7", None, None)
 
-    src0 = SrcTrie("", None, None, None, None)
+    src0 = SrcTrie("00001010000000000000000000000", None, None, None, None)
     src0.right = SrcTrie("1",src0, "R3", None, None)
     src0.left = SrcTrie("0", src0, None, src.left.left, None)
     src0.right.left = SrcTrie("10", src0.right, "R1", None, None)
     src0.left.right = SrcTrie("01", src0.left, "R2", None, None)
 
-    src00 = SrcTrie("", None, None, src0.left, None)
+    src00 = SrcTrie("00001010000000000000000000000", None, None, src0.left, None)
     src00.right = SrcTrie("1", src00, "R4", src0.right.left, None)
     src00.right.right = SrcTrie("11", src00.right, "R5", None, None)
 
-    src10 = SrcTrie("", None, None, src.left, None)
+    src10 = SrcTrie("00001010000000000000000000000", None, None, src.left, None)
     src10.right = SrcTrie("1", src10, "R6", None, None)
 
-    dest = DestTrie("", None, True, src)
+    dest = DestTrie("00001010000000000000000000000", None, True, src)
     dest.left = DestTrie("0", dest, True, src0)
     dest.left.left = DestTrie("00", dest.left, True, src00)
     dest.right = DestTrie("1", dest, False, None)
