@@ -176,7 +176,7 @@ def _handle_PacketIn (event):
             print("ipv4 none")
         
 
-	find_rule(str(pckt_srcip),str(pckt_dstip))
+	find_rule( '' .join(format(int(x), '08b') for x in str(pckt_srcip).split('.')) , '' .join(format(int(x), '08b') for x in str(pckt_dstip).split('.')) )
 	print "source ip"
 	#print str(packet.src)
 	print ip.toUnsignedN()	
@@ -235,16 +235,21 @@ def remove_Auth(src_ip,dst_ip,message):
 
 
 def find_rule(src_ip, dst_ip):
+    if dst_ip[:29] != stdip:
+	print "no rule match"
+	return
     dstformat = dst_ip
     desttrie = dest
     validdtrie = desttrie
-    while(len(desttrie) < 32 && (desttrie.left != None || desttrie.right != None)):
-	if (desttrie.left != None && dstformat[:len(desttrie.left.prefix)] == desttrie.left.prefix):
+    dst_ip_len = len(desttrie.prefix)
+    while( dst_ip_len < 32 && (desttrie.left != None || desttrie.right != None)):
+	if (desttrie.left != None && dstformat[:dst_ip_len + 1] == desttrie.left.prefix):
 		desttrie = desttrie.left
-	elif (desttrie.right!= None && dstformat[:len(desttrie.right.prefix)] == desttrie.right.prefix):
+	elif (desttrie.right!= None && dstformat[:dst_ip_len + 1] == desttrie.right.prefix):
 		desttrie = desttrie.right
 	if(desttrie.rule != False):
 		validtrie = desttrie
+	dst_ip_len = dst_ip_len + 1
     find_srcmatch(validtrie.srctrie, src_ip)
     return
 
